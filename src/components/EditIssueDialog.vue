@@ -1,11 +1,11 @@
 <template>
-  <el-dialog v-model="dialogVisible" :title="type">
+  <el-dialog v-model="dialogVisible" :title="type + ' issue'">
     <el-form :model="form">
       <el-form-item label="Title" label-width="140px">
-        <el-input v-model="form.title" autocomplete="off" />
+        <el-input v-model.trim="form.title" autocomplete="off" />
       </el-form-item>
       <el-form-item label="Body" label-width="140px">
-        <el-input v-model="form.body" autocomplete="off" />
+        <el-input v-model.trim="form.body" autocomplete="off" />
       </el-form-item>
       <el-form-item label="Status" label-width="140px">
         <el-select v-model="form.labels[0]['name']" class="m-2" placeholder="Select" size="large">
@@ -24,8 +24,8 @@
 
 <script>
 import { ElMessage } from "element-plus";
+import $axios from "@/axios";
 export default {
-  props: ["octokit"],
   data() {
     return {
       form: {
@@ -44,7 +44,7 @@ export default {
   },
   methods: {
     open(data = this.form, typeName = "create") {
-      this.form = { ...data };
+      this.form = JSON.parse(JSON.stringify(data));
       this.type = typeName;
       this.dialogVisible = true;
     },
@@ -61,20 +61,33 @@ export default {
         (this.dialogVisible = false);
     },
     async editIssue() {
-      let url =
-        this.type === "create"
-          ? "POST /repos/{owner}/{repo}/issues"
-          : "PATCH /repos/{owner}/{repo}/issues/{issue_number}";
-      try {
-        const result = await this.octokit.request(url, {
-          owner: "pinpin1002",
-          repo: this.$route.params.name,
-          issue_number: this.form.number,
+      if (this.form.title.trim() === "") {
+        return ElMessage({
+          message: "Title 不得空白",
+          type: "warning",
+        });
+      }
+
+      let config = {
+        url:
+          this.type === "edit"
+            ? `repos/${this.$store.state.auth.userInfo.login}/${this.$route.params.name}/issues/${this.form.number}`
+            : `repos/${this.$store.state.auth.userInfo.login}/${this.$route.params.name}/issues`,
+        method: this.type === "edit" ? "PATCH" : "POST",
+        headers: {
+          Authorization: "token " + localStorage.getItem("accessToken"),
+        },
+        data: {
           title: this.form.title,
           body: this.form.body,
           labels: [this.form.labels[0]["name"]],
-        });
-        if (result.status === 200 || result.status === 201) {
+        },
+      };
+
+      try {
+        const results = await $axios(config);
+
+        if (results.status === 200 || results.status === 201) {
           this.hideEditIssueDialog();
           this.$emit("refreshTable");
           ElMessage({

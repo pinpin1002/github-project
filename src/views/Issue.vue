@@ -16,7 +16,7 @@
           :data="filterTableData"
           style="width: 100%"
           max-height="500"
-          :cell-class-name="hello"
+          :cell-class-name="cellClassName"
           v-loading="loading"
         >
           <el-table-column prop="number" label="#" width="50" />
@@ -45,22 +45,23 @@
       </el-main>
     </el-container>
   </div>
-  <EditIssueDialog ref="dialog" @refreshTable="refreshIssues" :octokit="octokit" />
+  <EditIssueDialog ref="dialog" @refreshTable="refreshIssues" />
 </template>
 
 <script>
-import { Octokit } from "https://cdn.skypack.dev/octokit";
 import dayjs from "dayjs";
+import $axios from "@/axios";
+import { hasData } from "@/utils";
+import { ElMessage } from "element-plus";
+
 import EditIssueDialog from "@/components/EditIssueDialog.vue";
-import axios from "axios";
+
 export default {
   components: { EditIssueDialog },
   data() {
     return {
-      token: localStorage.getItem("accessToken"),
       issues: [],
       search: "",
-      octokit: null,
       page: 1,
       loading: false,
       noMore: false,
@@ -74,36 +75,40 @@ export default {
         this.refreshIssues();
       }
     );
-    this.octokit = new Octokit({
-      auth: this.token,
-    });
-    this.listAllIssues();
+    if (hasData(this.$store.state.auth.userInfo)) {
+      this.listAllIssues();
+    }
   },
   computed: {
     filterTableData() {
       return this.issues.filter((data) => !this.search || data.title.toLowerCase().includes(this.search.toLowerCase()));
     },
+    isUserDataLoaded() {
+      return this.$store.state.auth.userInfo;
+    },
   },
   methods: {
-    hello({ row, rowIndex }) {
-      // if (row.labels[0].name) {
-      //   console.log(row.labels[0].name);
-      //   return row.labels[0].name;
-      // }
+    cellClassName({ row }) {
+      if (row.labels[0].name) {
+        switch (row.labels[0].name) {
+          case "In Progress":
+            return "Progress";
+          case "Done":
+            return "Done";
+          case "Open":
+            return "Open";
+          default:
+            return "";
+        }
+      }
     },
     async refreshIssues() {
       this.loading = true;
       try {
-        const results = await axios(
-          `https://api.github.com/repos/pinpin1002/${this.$route.params.name}/issues?per_page=` +
+        const results = await $axios.get(
+          `repos/${this.$store.state.auth.userInfo.login}/${this.$route.params.name}/issues?per_page=` +
             this.perPage +
-            "&page=1",
-          {
-            method: "GET",
-            headers: {
-              Authorization: this.token,
-            },
-          }
+            "&page=1"
         );
         if (results.status === 200) {
           let data = results.data.map((item) => ({
@@ -120,17 +125,11 @@ export default {
     async listAllIssues() {
       this.loading = true;
       try {
-        const results = await axios(
-          `https://api.github.com/repos/pinpin1002/${this.$route.params.name}/issues?per_page=` +
+        const results = await $axios.get(
+          `repos/${this.$store.state.auth.userInfo.login}/${this.$route.params.name}/issues?per_page=` +
             this.perPage +
             "&page=" +
-            this.page,
-          {
-            method: "GET",
-            headers: {
-              Authorization: this.token,
-            },
-          }
+            this.page
         );
         if (results.status === 200) {
           if (results.data.length < this.perPage) {
@@ -148,15 +147,42 @@ export default {
       }
     },
     async handleDelete(row) {
-      await this.octokit.request("PATCH /repos/{owner}/{repo}/issues/{issue_number}", {
-        owner: "pinpin1002",
-        repo: this.$route.params.name,
-        issue_number: row.number,
-        state: "closed",
-      });
+      try {
+        const results = await $axios.patch(
+          `https://api.github.com/repos/${this.$store.state.auth.userInfo.login}/${this.$route.params.name}/issues/${row.number}`,
+          {
+            state: "closed",
+          },
+          {
+            headers: {
+              Authorization: "token " + localStorage.getItem("accessToken"),
+            },
+          }
+        );
+        if (results.status === 200) {
+          ElMessage({
+            message: "完成",
+            type: "success",
+          });
+        }
+      } catch (error) {
+        ElMessage({
+          message: "錯誤",
+          type: "error",
+        });
+      } finally {
+        this.refreshIssues();
+      }
     },
     async handleEdit(row, type) {
       this.$refs.dialog.open(row, type);
+    },
+  },
+  watch: {
+    isUserDataLoaded() {
+      if (hasData(this.$store.state.auth.userInfo)) {
+        this.listAllIssues();
+      }
     },
   },
 };
@@ -177,8 +203,20 @@ export default {
 .el-button {
   padding: 15px 20px;
 }
-:deep(.labels.Open .cell) {
-  color: green;
+:deep(.labels.Open) {
+  text-align: center;
+  color: #fff;
+  background-color: var(--el-color-success);
+}
+:deep(.labels.Progress) {
+  text-align: center;
+  color: #fff;
+  background-color: var(--el-color-warning);
+}
+:deep(.labels.Done) {
+  text-align: center;
+  color: #fff;
+  background-color: var(--el-color-info);
 }
 .createIssuebtn {
   margin-bottom: 10px;

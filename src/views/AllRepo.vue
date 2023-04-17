@@ -2,8 +2,8 @@
   <Header />
   <h1>Repositories:</h1>
   <el-container>
-    <el-aside width="200px"
-      ><router-link :to="`/Issue/${item.name}`" v-for="(item, index) in repoLists" :key="index">
+    <el-aside width="200px">
+      <router-link :to="`/Issue/${item.name}`" v-for="(item, index) in repoLists" :key="index">
         <el-card class="box-card">
           {{ item.name }}
         </el-card>
@@ -32,7 +32,7 @@ export default {
   },
   computed: {
     isUserDataLoaded() {
-      return this.$store.state.auth.userInfo;
+      return hasData(this.$store.state.auth.userInfo);
     },
   },
   methods: {
@@ -47,7 +47,7 @@ export default {
   },
   watch: {
     isUserDataLoaded() {
-      if (hasData(this.$store.state.auth.userInfo)) {
+      if (this.isUserDataLoaded) {
         this.listAllRepo();
       }
     },
@@ -58,5 +58,16 @@ export default {
 <style lang="scss" scoped>
 .el-main {
   padding-top: 0;
+}
+.box-card {
+  background-color: var(--el-text-color-regular);
+  transition: all 0.5s;
+  &:hover {
+    background-color: var(--el-color-success);
+    opacity: 0.6;
+  }
+  ::v-deep(.el-card__body) {
+    color: white;
+  }
 }
 </style>

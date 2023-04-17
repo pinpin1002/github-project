@@ -1,5 +1,5 @@
 import router from "@/router/index.js";
-import axios from "axios";
+import $axios from "@/axios";
 import { Octokit } from "https://cdn.skypack.dev/octokit";
 
 const auth = {
@@ -35,7 +35,7 @@ const auth = {
       const codeParam = new URLSearchParams(window.location.search).get("code");
       const {
         data: { access_token },
-      } = await axios.get(`http://localhost:4000/getAccessToken?code=${codeParam}`);
+      } = await $axios.get(`http://localhost:4000/getAccessToken?code=${codeParam}`);
 
       if (access_token) {
         localStorage.setItem("accessToken", access_token);
@@ -43,11 +43,22 @@ const auth = {
         router.push("/");
       }
     },
-    async getUserInfo({ commit, state }) {
-      const {
-        data: { login, name, avatar_url, public_repos },
-      } = await state.octokit.request("GET /user");
-      commit("setUserInfo", { login, name, avatar_url, public_repos });
+    async getUserInfo({ commit }) {
+      try {
+        const {
+          data: { login, name, avatar_url, public_repos },
+          status,
+        } = await $axios.get(`https://api.github.com/user`, {
+          headers: {
+            Authorization: "token " + localStorage.getItem("accessToken"),
+          },
+        });
+        if (status === 200) {
+          commit("setUserInfo", { login, name, avatar_url, public_repos });
+        }
+      } catch (error) {
+        console.log("error", error);
+      }
     },
   },
 };

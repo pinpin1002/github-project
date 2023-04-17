@@ -4,10 +4,17 @@
   </div>
 </template>
 
-<script></script>
+<script>
+export default {
+  data() {},
+  created() {
+    // console.log(route);
+  },
+};
+</script>
 
 <style scoped>
-.container{
+.container {
   padding: 10px 20px;
 }
 </style>
