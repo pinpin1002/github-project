@@ -221,6 +221,5 @@ export default {
 }
 .createIssuebtn {
   margin-bottom: 10px;
-  margin-left: 20px;
 }
 </style>
