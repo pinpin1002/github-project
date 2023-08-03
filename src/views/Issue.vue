@@ -201,7 +201,8 @@ export default {
   display: none;
 }
 .el-button {
-  padding: 15px 20px;
+  min-width: 50px;
+  padding: 0px 10px;
 }
 :deep(.labels.Open) {
   text-align: center;
